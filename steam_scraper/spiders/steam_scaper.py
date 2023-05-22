@@ -23,15 +23,13 @@ class SteamSpider(scrapy.Spider):
                 supported = os.split()[1]
                 os_support.append(supported)
             
-            # # Dynamic price scraper
-            # price = link.css('div.search_price::text').get().strip()
-            # if '\n' in price:
-            #     price = price.split('\n')[1]  # Mengambil baris kedua
+            # Dynamic price scraper
+            price = link.css('div.search_price::text').get().strip()
 
             parent_data = {
                 "title": link.css('span.title::text').get(),
+                "base_price": price,
                 "os_support": os_support,
-                # "price": price,
                 "discount" : link.css('div.search_discount span::text').get(),
                 "release": link.css('div.search_released::text').get()
             }
@@ -39,7 +37,7 @@ class SteamSpider(scrapy.Spider):
     
     def parse_link(self, response):
         parent_data = response.meta["parent_data"]
-        genre = response.css('#genresAndManufacturer span a:text').getall()
+        genre = response.css('#genresAndManufacturer span a::text').getall()
         dev = [dev.strip() for dev in response.css("#developers_list a::text").getall()]
         publish = [pub for pub in response.css("#genresAndManufacturer a::text").getall()]
         
@@ -48,7 +46,7 @@ class SteamSpider(scrapy.Spider):
             "genres": genre,
             "developer" : dev,
             "publisher" : publish[-2],
-            "sum_rating" : response.css('span.game_review_summary').get()
+            "sum_rating" : response.css('span.game_review_summary::text').get()
         })
         yield parent_data
     
