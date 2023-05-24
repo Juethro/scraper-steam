@@ -65,3 +65,4 @@ class SteamSpider(scrapy.Spider):
 
         # Setelah melewati halaman konfirmasi usia, lanjutkan proses scraping seperti biasa
         yield scrapy.Request(url=response.url, callback=self.parse, meta={'dont_redirect': True})
+        
