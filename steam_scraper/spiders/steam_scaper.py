@@ -40,12 +40,21 @@ class SteamSpider(scrapy.Spider):
         genre = response.css('#genresAndManufacturer span a::text').getall()
         dev = [dev.strip() for dev in response.css("#developers_list a::text").getall()]
         publish = [pub for pub in response.css("#genresAndManufacturer a::text").getall()]
-        
+        features = [featur.strip() for featur in response.css("#category_block div.label::text").getall()]
+        reviewtot = [response.css("#review_histogram_rollup_section div.summary_section span::text").getall()]
+        storages = response.css(".game_area_sys_req_full ul.bb_ul li strong:contains('Storage:') + li::text").getall()
+
+
+
+
         
         parent_data.update({
             "genres": genre,
             "developer" : dev,
             "publisher" : publish[-2],
+            "features" : features, 
+            "total review" : reviewtot[0][1],
+            "storage" : storages,
             "sum_rating" : response.css('span.game_review_summary::text').get()
         })
         yield parent_data
@@ -65,4 +74,3 @@ class SteamSpider(scrapy.Spider):
 
         # Setelah melewati halaman konfirmasi usia, lanjutkan proses scraping seperti biasa
         yield scrapy.Request(url=response.url, callback=self.parse, meta={'dont_redirect': True})
-        
