@@ -1,11 +1,5 @@
 from pathlib import Path
 import scrapy
-from scrapy_selenium import SeleniumRequest
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.action_chains import ActionChains
 
 
 class SteamSpider(scrapy.Spider):
@@ -14,42 +8,6 @@ class SteamSpider(scrapy.Spider):
     start_urls = [
         "https://store.steampowered.com/search/?filter=topsellers&os=win"
     ]
-    def start_requests(self):
-        for url in self.start_urls:
-            yield SeleniumRequest(
-                url=url,
-                callback=self.parse_initial,
-                wait_time=5,
-                wait_until=EC.presence_of_element_located((By.CSS_SELECTOR, '#search_resultsRows')),
-                script='window.scrollTo(0, document.body.scrollHeight);',
-            )
-
-    def parse_initial(self, response):
-        yield from self.parse(response)
-
-        # Scroll down to load more content
-        yield SeleniumRequest(
-            url=response.url,
-            callback=self.parse_scroll,
-            wait_time=10,
-            wait_until=EC.presence_of_element_located((By.CSS_SELECTOR, '#search_resultsRows')),
-            script='window.scrollTo(0, document.body.scrollHeight);',
-        )
-
-    def parse_scroll(self, response):
-        yield from self.parse(response)
-
-        # Check if there is more content to load
-        has_more_content = self.has_more_content(response)
-        if has_more_content:
-            # Continue scrolling to load more content
-            yield SeleniumRequest(
-                url=response.url,
-                callback=self.parse_scroll,
-                wait_time=10,
-                wait_until=EC.presence_of_element_located((By.CSS_SELECTOR, '#search_resultsRows')),
-                script='window.scrollTo(0, document.body.scrollHeight);',
-            )
 
     def parse(self, response):
         div_links = response.css('#search_resultsRows a')
@@ -84,9 +42,16 @@ class SteamSpider(scrapy.Spider):
         publish = [pub for pub in response.css("#genresAndManufacturer a::text").getall()]
         features = [featur.strip() for featur in response.css("#category_block div.label::text").getall()]
         reviewtot = [response.css("#review_histogram_rollup_section div.summary_section span::text").getall()]
-        storage_element = response.css('.game_area_sys_req_full li strong::text').getall()
-        storages = [s.strip() for s in storage_element if 'Storage:' in s]
-        metacritic = response.css("span.metascore_w::text").get()
+        metascore_detect = response.css("#game_area_metascore div.score::text").get()
+        if metascore_detect:
+            metacritic = metascore_detect.strip()
+        else:
+            metacritic = None
+        storage_element = response.css('div.game_area_sys_req_rightCol ul.bb_ul li::text').getall()
+        storages = next((s for s in storage_element if "available space" in s), None)
+        if storages is None:
+            storages = None
+        
         
         parent_data.update({
             "genres": genre,
@@ -99,19 +64,3 @@ class SteamSpider(scrapy.Spider):
             "sum_rating" : response.css('span.game_review_summary::text').get()
         })
         yield parent_data
-    
-    def is_age_verification_page(self, response):
-        pass
-        # Tentukan kondisi atau selektor yang menunjukkan bahwa halaman konfirmasi usia muncul
-        # Misalnya, Anda dapat memeriksa teks atau elemen tertentu pada halaman
-        # Return True jika halaman konfirmasi usia muncul, False jika tidak
-        # ...
-
-    def bypass_age_verification(self, response):
-        # Lakukan langkah-langkah khusus untuk melewati halaman konfirmasi usia
-        # Misalnya, Anda dapat menemukan dan mengklik elemen "Ya, Saya Berusia 18 Tahun atau Lebih"
-        # Jika diperlukan, Anda juga dapat mengatur cookies atau mengirim data form untuk melewati halaman ini
-        # ...
-
-        # Setelah melewati halaman konfirmasi usia, lanjutkan proses scraping seperti biasa
-        yield scrapy.Request(url=response.url, callback=self.parse, meta={'dont_redirect': True})
