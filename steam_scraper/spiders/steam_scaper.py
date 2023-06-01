@@ -5,9 +5,14 @@ import scrapy
 class SteamSpider(scrapy.Spider):
     name = "steam"
 
-    start_urls = [
-        "https://store.steampowered.com/search/?filter=topsellers&os=win"
-    ]
+    custom_settings = {
+        'DOWNLOAD_DELAY': 0.5  # Delay of 0.5 seconds between requests
+    }
+
+    def start_requests(self):
+        for x in range(0,2000,91):
+            url = f"https://store.steampowered.com/search/?filter=topsellers&os=win&query&start={x}&count=2000"
+            yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response):
         div_links = response.css('#search_resultsRows a')
@@ -51,10 +56,23 @@ class SteamSpider(scrapy.Spider):
         storages = next((s for s in storage_element if "available space" in s), None)
         if storages is None:
             storages = None
+        dlc_detect = response.css('div.game_area_dlc_bubble div.content h1::text').get()
+        if dlc_detect:
+            dlc = "yes"
+        else:
+            dlc = "no"
+        sound_detect = response.css('div.game_area_dlc_bubble div.content h1::text').get()
+        if sound_detect:
+            soundtrack = "yes"
+        else:
+            soundtrack = "no"
+        
         
         
         parent_data.update({
             "genres": genre,
+            "dlc": dlc,
+            "soundtrack": soundtrack,
             "developer" : dev,
             "publisher" : publish[-2],
             "features" : features, 
